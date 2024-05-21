@@ -215,7 +215,7 @@ def Umap(args, X, label, n_clusters, score):
     plt.title('UMAP projection')
     if score:
         plt.text(0.0, 0.0, score, fontdict={'size':'16','color':'black'},  transform = plt.gca().transAxes)
-    plt.savefig(args.result_path + '/Umap.jpg')
-    #plt.show()
+    plt.savefig(args.result_path + '\\Umap.jpg')
+    plt.show()
     plt.close()
 
