@@ -25,13 +25,13 @@ import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, ChebConv, GATConv, DeepGraphInfomax, global_mean_pool, global_max_pool  # noqa
 from torch_geometric.data import Data, DataLoader
 
-from CCST import get_graph, train_DGI, train_DGI, PCA_process, Kmeans_cluster
+from train import get_graph, train_DGI, train_DGI, PCA_process, Kmeans_cluster
 
 rootPath = os.path.dirname(sys.path[0])
-os.chdir(rootPath+'/CCST')
+os.chdir(rootPath+'\\CST-main')
 
 def get_data(args):
-    data_file = args.data_path + args.data_name +'/'
+    data_file = args.data_path + args.data_name +'\\'
     with open(data_file + 'Adjacent', 'rb') as fp:
         adj_0 = pickle.load(fp)
     X_data = np.load(data_file + 'features.npy')
@@ -101,9 +101,9 @@ def compare_labels(save_path, gt_labels, cluster_labels):
         matrix = matrix[:, order_seq]
         norm_matrix = norm_matrix[:, order_seq]
         plt.imshow(norm_matrix)
-        plt.savefig(save_path + '/compare_labels_Matrix.png')
+        plt.savefig(save_path + '\\compare_labels_Matrix.png')
         plt.close()
-        np.savetxt(save_path+ '/compare_labels_Matrix.txt', matrix, fmt='%3d', delimiter='\t')
+        np.savetxt(save_path+ '\\compare_labels_Matrix.txt', matrix, fmt='%3d', delimiter='\t')
         reorder_cluster_labels = np.array(reorder_cluster_labels, dtype=int)
 
     else:
@@ -129,7 +129,7 @@ def draw_map(args, adj_0, barplot=False):
         line = f.readline() 
     f.close() 
     n_clusters = max(cell_cluster_type_list) + 1 # start from 0
-    print('n clusters in drwaing:', n_clusters)
+    print('n clusters in drawing:', n_clusters)
     coordinates = np.load(data_folder+'coordinates.npy')
 
     sc_cluster = plt.scatter(x=coordinates[:,0], y=-coordinates[:,1], s=5, c=cell_cluster_type_list, cmap='rainbow')  
@@ -140,8 +140,8 @@ def draw_map(args, adj_0, barplot=False):
     plt.axis('scaled')
     #plt.xlabel('X')
     #plt.ylabel('Y')
-    plt.title('CCST')
-    plt.savefig(save_path+'/spacial.png', dpi=400, bbox_inches='tight') 
+    plt.title('GCN')
+    plt.savefig(save_path+'\\spacial.png', dpi=400, bbox_inches='tight') 
     plt.clf()
 
 
@@ -163,18 +163,17 @@ def draw_map(args, adj_0, barplot=False):
                 barplot[source_cluster_type_index, neighbor_type_index] += 1
                 source_cluster_type_count[source_cluster_type_index] += 1
 
-        np.savetxt(save_path + '/cluster_' + str(n_clusters) + '_barplot.txt', barplot, fmt='%3d', delimiter='\t')
+        np.savetxt(save_path + '\\cluster_' + str(n_clusters) + '_barplot.txt', barplot, fmt='%3d', delimiter='\t')
         norm_barplot = barplot/(source_cluster_type_count.reshape(-1, 1))
-        np.savetxt(save_path + '/cluster_' + str(n_clusters) + '_barplot_normalize.txt', norm_barplot, fmt='%3f', delimiter='\t')
+        np.savetxt(save_path + '\\cluster_' + str(n_clusters) + '_barplot_normalize.txt', norm_barplot, fmt='%3f', delimiter='\t')
 
         for clusters_i in range(n_clusters):
             plt.bar(range(n_clusters), norm_barplot[clusters_i], label='graph '+str(clusters_i))
             plt.xlabel('cell type index')
             plt.ylabel('value')
             plt.title('barplot_'+str(clusters_i))
-            plt.savefig(save_path + '/barplot_sub' + str(clusters_i)+ '.jpg')
+            plt.savefig(save_path + '\\barplot_sub' + str(clusters_i)+ '.jpg')
             plt.clf()
-
     return 
 
 
@@ -222,18 +221,6 @@ def CCST_on_ST(args):
 
     print('n clusters:', n_clusters)
 
-    if args.DGI and (lambda_I>=0):
-        print("-----------Deep Graph Infomax-------------")
-        data_list = get_graph(adj, X_data)
-        data_loader = DataLoader(data_list, batch_size=batch_size)
-        DGI_model = train_DGI(args, data_loader=data_loader, in_channels=num_feature)
-
-        for data in data_loader:
-            data.to(device)
-            X_embedding, _, _ = DGI_model(data)
-            X_embedding = X_embedding.cpu().detach().numpy()
-            X_embedding_filename =  args.embedding_data_path+'lambdaI' + str(lambda_I) + '_epoch' + str(args.num_epoch) + '_Embed_X.npy'
-            np.save(X_embedding_filename, X_embedding)
 
     if args.cluster:
         cluster_type = 'kmeans' # 'louvain' leiden kmeans
@@ -250,8 +237,12 @@ def CCST_on_ST(args):
             #X_embedding = np.concatenate((X_embedding, X_data), axis=1)
             print('Shape of data to cluster:', X_embedding.shape)
             cluster_labels, score = Kmeans_cluster(X_embedding, n_clusters) 
+            
+            
+
+             
         else:
-            results_file = args.result_path + '/adata.h5ad'
+            results_file = args.result_path + '\\adata.h5ad'
             adata = ad.AnnData(X_embedding)
             sc.tl.pca(adata, n_comps=50, svd_solver='arpack')
             sc.pp.neighbors(adata, n_neighbors=20, n_pcs=50) # 20
@@ -272,7 +263,10 @@ def CCST_on_ST(args):
         for index in range(num_cell):
             #all_data.append([index, cell_type_indeces[index], cluster_labels[index]])  # txt: cell_id, gt_labels, cluster type 
             all_data.append([index,  cluster_labels[index]])   #txt: cell_id, cluster type 
-        np.savetxt(args.result_path+'/types.txt', np.array(all_data), fmt='%3d', delimiter='\t')
+        np.savetxt(args.result_path+'\\types.txt', np.array(all_data), fmt='%3d', delimiter='\t')
+
+       
+
         
 
     if args.draw_map:
