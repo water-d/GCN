@@ -15,6 +15,8 @@ import utils_graph
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 import numpy as np
+from sklearn.metrics import silhouette_score, homogeneity_score, completeness_score, v_measure_score, adjusted_rand_score, adjusted_mutual_info_score
+from sklearn.cluster import KMeans
 
 adj, features, labels, idx_train, idx_val, idx_test = utils_graph.load_data()
 
@@ -64,9 +66,9 @@ def train(epoch):
     t = time.time()
     model.train()
     optimizer.zero_grad()
-    output = model(features,adj)
-    loss_train = F.nll_loss(output[idx_train],labels[idx_train])
-    acc_val = utils_graph.accuracy(output[idx_val],labels[idx_val])
+    output = model(features, adj)
+    loss_train = F.nll_loss(output[idx_train], labels[idx_train])
+    acc_val = utils_graph.accuracy(output[idx_val], labels[idx_val])
     loss_train.backward()
     optimizer.step()
 
@@ -74,23 +76,38 @@ def train(epoch):
     train_losses.append(loss_train.item())
     val_accuracies.append(acc_val.item())
 
-    if epoch%100==0:
-        print('Epoch: {:04d}'.format(epoch + 1), 'loss_train: {:.4f}'.format(loss_train.item()),'acc_val: {:.4f}'.format(acc_val.item()))
+    if epoch % 100 == 0:
+        print('Epoch: {:04d}'.format(epoch + 1), 'loss_train: {:.4f}'.format(loss_train.item()), 'acc_val: {:.4f}'.format(acc_val.item()))
 
 def test():
-
     model.eval()
     output = model(features, adj)
     loss_test = F.nll_loss(output[idx_test], labels[idx_test])
     acc_test = utils_graph.accuracy(output[idx_test], labels[idx_test])
+    
+    # 计算聚类标签
+    cluster_labels = torch.argmax(output[idx_test], dim=1).cpu().detach().numpy()
+    true_labels = labels[idx_test].cpu().detach().numpy()
+    
+    # 计算轮廓系数
+    silhouette_avg = silhouette_score(output[idx_test].cpu().detach().numpy(), cluster_labels)
+
+    # 计算其他指标
+    homogeneity = homogeneity_score(true_labels, cluster_labels)
+    completeness = completeness_score(true_labels, cluster_labels)
+    v_measure = v_measure_score(true_labels, cluster_labels)
+    ari = adjusted_rand_score(true_labels, cluster_labels)
+    ami = adjusted_mutual_info_score(true_labels, cluster_labels)
+
     print("Test set results:",
           "loss= {:.4f}".format(loss_test.item()),
-          "accuracy= {:.4f}".format(acc_test.item()))
-    # Extracting the last layer features (or any other layer's output you wish to visualize)
-    last_features = output
-
-    # Assuming labels[idx_test] are the true labels for the test set nodes
-    visualize_with_tsne(last_features[idx_test], labels[idx_test])
+          "accuracy= {:.4f}".format(acc_test.item()),
+          "silhouette= {:.4f}".format(silhouette_avg),
+          "homogeneity= {:.4f}".format(homogeneity),
+          "completeness= {:.4f}".format(completeness),
+          "v_measure= {:.4f}".format(v_measure),
+          "ari= {:.4f}".format(ari),
+          "ami= {:.4f}".format(ami))
 
 def plot_performance():
     plt.figure(figsize=(15, 5))
@@ -105,9 +122,8 @@ def plot_performance():
     plt.legend()
     plt.show()
 
-#后续可添加可视化混淆矩阵
 t_total = time.time()
-for epoch in range(20500):#20500
+for epoch in range(20500):  # 20500
     train(epoch)
 print("Optimization Finished!")
 print("Total time elapsed: {:.4f}s".format(time.time() - t_total))
